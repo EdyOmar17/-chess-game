@@ -478,13 +478,18 @@ body {
 
 .chess-board {
     display: grid;
-    grid-template-columns: repeat(8, var(--sq-size));
-    grid-template-rows: repeat(8, var(--sq-size));
-    border: 8px solid var(--board-dark);
-    border-radius: 8px;
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.5);
-    background: var(--board-dark);
+    grid-template-columns: repeat(8, 1fr);
+    width: calc(var(--sq-size) * 8);
+    height: calc(var(--sq-size) * 8);
+    border: 5px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 0 50px rgba(0, 0, 0, 0.5);
     position: relative;
+    touch-action: none; /* Prevent scrolling/refresh while playing */
+    user-select: none;
+    -webkit-user-select: none;
+    border-radius: 8px; /* Kept from original */
+    background: var(--board-dark); /* Kept from original */
+    grid-template-rows: repeat(8, var(--sq-size)); /* Kept from original */
 }
 
 .sq {

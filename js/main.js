@@ -312,6 +312,8 @@ function startGame(mode, levelId = null) {
     appState.game.reset();
 
     // Initialize Clock from UI
+    if (chessClock) chessClock.stop(); // Stop any existing interval
+
     const timeVal = document.getElementById('time-select').value;
     if (timeVal !== 'none') {
         const [mins, inc] = timeVal.split('+').map(Number);
@@ -366,40 +368,45 @@ function startGame(mode, levelId = null) {
 }
 
 function handleTimeOut(color) {
+    // Only show timeout if we are actually in a game and clock matches
+    if (!chessClock || ui.gameInterface.classList.contains('hidden')) return;
+
     const winner = color === 'w' ? 'Negras' : 'Blancas';
     const message = `¡Tiempo agotado! Ganan las ${winner}.`;
     showGameOverOverlay("Perdió por tiempo", message);
 }
 
+// Memoization for clock UI to prevent excessive DOM updates
+let lastClockState = { pText: '', oText: '', pActive: false, oActive: false, pLow: false, oLow: false };
+
 function updateClockUI(timers) {
     const pClock = document.getElementById('player-clock');
     const oClock = document.getElementById('opponent-clock');
-
-    // Update Times
-    if (appState.playerColor === 'w') {
-        pClock.textContent = chessClock.formatTime(timers.w);
-        oClock.textContent = chessClock.formatTime(timers.b);
-    } else {
-        pClock.textContent = chessClock.formatTime(timers.b);
-        oClock.textContent = chessClock.formatTime(timers.w);
-    }
-
-    // Handle Active States & Colors
-    pClock.classList.remove('active', 'low-time');
-    oClock.classList.remove('active', 'low-time');
+    if (!pClock || !oClock) return;
 
     const activeColor = chessClock.activeColor;
     const playerActualColor = appState.playerColor;
 
-    if (activeColor === playerActualColor) {
-        pClock.classList.add('active');
-    } else if (activeColor) {
-        oClock.classList.add('active');
-    }
+    const pText = playerActualColor === 'w' ? chessClock.formatTime(timers.w) : chessClock.formatTime(timers.b);
+    const oText = playerActualColor === 'w' ? chessClock.formatTime(timers.b) : chessClock.formatTime(timers.w);
+    
+    const pActive = activeColor === playerActualColor;
+    const oActive = activeColor && activeColor !== playerActualColor;
+    
+    const pLow = (playerActualColor === 'w' ? timers.w : timers.b) < 15000;
+    const oLow = (playerActualColor === 'w' ? timers.b : timers.w) < 15000;
 
-    // Low time warning (< 15 seconds)
-    if (timers.w < 15000) (playerActualColor === 'w' ? pClock : oClock).classList.add('low-time');
-    if (timers.b < 15000) (playerActualColor === 'b' ? pClock : oClock).classList.add('low-time');
+    // Only update DOM if state changed
+    if (pText !== lastClockState.pText) pClock.textContent = pText;
+    if (oText !== lastClockState.oText) oClock.textContent = oText;
+    
+    if (pActive !== lastClockState.pActive) pClock.classList.toggle('active', pActive);
+    if (oActive !== lastClockState.oActive) oClock.classList.toggle('active', oActive);
+    
+    if (pLow !== lastClockState.pLow) pClock.classList.toggle('low-time', pLow);
+    if (oLow !== lastClockState.oLow) oClock.classList.toggle('low-time', oLow);
+
+    lastClockState = { pText, oText, pActive, oActive, pLow, oLow };
 }
 
 function handleMoveAttempt(from, to) {

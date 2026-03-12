@@ -240,17 +240,22 @@ class BoardRenderer {
         // Prevent scrolling during touch
     }
 
-    handleTouchEnd(e, squareId) {
+    handleTouchEnd(e, startSquareId) {
         e.preventDefault();
-        if (this.touchedSquare && this.touchedSquare !== squareId) {
-            // Try to move from touched square to this square
-            const success = this.onMove(this.touchedSquare, squareId);
+        const touch = e.changedTouches[0];
+        // Identify element at touch release coordinates
+        const targetEl = document.elementFromPoint(touch.clientX, touch.clientY);
+        const sqEl = targetEl ? targetEl.closest('.sq') : null;
+        const targetSquareId = sqEl ? sqEl.dataset.square : null;
+
+        if (this.touchedSquare && targetSquareId && this.touchedSquare !== targetSquareId) {
+            // Try to move from touched square to the one under the finger
+            const success = this.onMove(this.touchedSquare, targetSquareId);
             if (success) {
                 this.clearSelection();
-                // Force immediate re-render
-                setTimeout(() => {
-                    this.render();
-                }, 10);
+                setTimeout(() => this.render(), 10);
+            } else {
+                this.render(); // Snap back
             }
         }
         this.touchedSquare = null;
