@@ -1,0 +1,23 @@
+/* Chess Pieces Unicode Style */
+.piece-w-p::before { content: '♙'; }
+.piece-w-n::before { content: '♘'; }
+.piece-w-b::before { content: '♗'; }
+.piece-w-r::before { content: '♖'; }
+.piece-w-q::before { content: '♕'; }
+.piece-w-k::before { content: '♔'; }
+
+.piece-b-p::before { content: '♟'; }
+.piece-b-n::before { content: '♞'; }
+.piece-b-b::before { content: '♝'; }
+.piece-b-r::before { content: '♜'; }
+.piece-b-q::before { content: '♛'; }
+.piece-b-k::before { content: '♚'; }
+
+.piece {
+    font-size: calc(var(--sq-size) * 0.8);
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+}

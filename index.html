@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="es">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Master Chess - Premium Edition</title>
+    <link rel="stylesheet" href="css/style.css">
+    <link rel="stylesheet" href="assets/pieces/pieces.css">
+    <!-- Google Fonts for Premium Typography -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Chess.js Library -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+    <!-- Local Sounds -->
+    <script src="assets/sounds/sounds.js"></script>
+    <!-- Confetti Library -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Background Elements -->
+        <div class="bg-orb orb-1"></div>
+        <div class="bg-orb orb-2"></div>
+
+        <!-- Main Menu Overlay -->
+        <div id="main-menu" class="overlay active">
+            <div class="menu-content glass-panel">
+                <h1 class="game-title">MASTER <span class="highlight">CHESS</span></h1>
+                <p class="subtitle">Elevate Your Game</p>
+
+                <div class="menu-buttons">
+                    <button class="btn primary" onclick="startGame('tutorial')">
+                        <i class="fa-solid fa-graduation-cap"></i> Aprender (Tutorial)
+                    </button>
+                    <button class="btn primary" onclick="startGame('vs-cpu')">
+                        <i class="fa-solid fa-robot"></i> Jugar vs CPU
+                    </button>
+                    <div class="time-control-selector glass-panel">
+                        <label for="time-select"><i class="fa-solid fa-clock"></i> Control de Tiempo:</label>
+                        <select id="time-select">
+                            <option value="none">Sin tiempo</option>
+                            <option value="1+0">Bullet (1m)</option>
+                            <option value="2+1">Bullet (2m + 1s)</option>
+                            <option value="3+0">Blitz (3m)</option>
+                            <option value="3+2" selected>Blitz (3m + 2s)</option>
+                            <option value="5+0">Blitz (5m)</option>
+                            <option value="5+3">Blitz (5m + 3s)</option>
+                            <option value="10+0">Rapid (10m)</option>
+                            <option value="15+10">Rapid (15m + 10s)</option>
+                            <option value="90+30">Clásico (90m + 30s)</option>
+                        </select>
+                    </div>
+                    <button class="btn secondary" onclick="startGame('local')">
+                        <i class="fa-solid fa-users"></i> 2 Jugadores
+                    </button>
+                    <button class="btn secondary" onclick="showOnlineMenu()">
+                        <i class="fa-solid fa-globe"></i> Jugar Online
+                    </button>
+                    <button class="btn secondary" onclick="showLevels()">
+                        <i class="fa-solid fa-layer-group"></i> Niveles
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Online Menu Overlay -->
+        <div id="online-menu" class="overlay hidden">
+            <div class="menu-content glass-panel">
+                <h2>Jugar Online</h2>
+                <div class="online-options">
+                    <div class="name-input-section">
+                        <input type="text" id="player-name-input" placeholder="Tu nombre" maxlength="15" value="Jugador">
+                        <small class="name-hint">Este nombre verá tu oponente</small>
+                    </div>
+                    <button class="btn primary" onclick="createOnlineGame()">
+                        <i class="fa-solid fa-plus"></i> Crear Partida
+                    </button>
+                    <div class="join-section">
+                        <input type="text" id="room-code" placeholder="Código de sala" maxlength="6">
+                        <button class="btn secondary" onclick="joinOnlineGame()">
+                            <i class="fa-solid fa-sign-in-alt"></i> Unirse
+                        </button>
+                    </div>
+                </div>
+                <div id="room-info" class="hidden">
+                    <p>Comparte este código:</p>
+                    <div class="room-code-display" id="room-code-display"></div>
+                    <p class="waiting-text">Esperando oponente...</p>
+                </div>
+                <button class="btn text-only" onclick="showMainMenu()">Volver</button>
+            </div>
+        </div>
+
+        <!-- Level Selector Overlay -->
+        <div id="level-menu" class="overlay hidden">
+            <div class="menu-content glass-panel">
+                <h2>Selecciona un Nivel</h2>
+                <div class="levels-grid" id="levels-grid">
+                    <!-- Levels injected via JS -->
+                </div>
+                <button class="btn text-only" onclick="showMainMenu()">Volver</button>
+            </div>
+        </div>
+
+        <!-- Promotion Dialog Overlay -->
+        <div id="promotion-dialog" class="overlay hidden">
+            <div class="menu-content glass-panel">
+                <h2>Coronar Peón</h2>
+                <div class="promotion-options" id="promotion-options">
+                    <!-- Options injected via JS -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Endgame Overlay -->
+        <div id="endgame-overlay" class="overlay hidden">
+            <div class="menu-content glass-panel">
+                <h2 id="endgame-title">Juego terminado</h2>
+                <p id="endgame-subtitle"></p>
+                <div class="menu-buttons">
+                    <button class="btn primary" onclick="resetGame()">
+                        <i class="fa-solid fa-rotate-right"></i> Jugar de nuevo
+                    </button>
+                    <button class="btn secondary" onclick="showMainMenu()">
+                        <i class="fa-solid fa-house"></i> Volver al menú principal
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Game Interface -->
+        <main id="game-interface" class="hidden">
+            <div class="game-layout">
+                <!-- Sidebar Info -->
+                <aside class="game-info glass-panel">
+                    <div class="player-info top">
+                        <div class="avatar opponent"><i class="fa-solid fa-robot"></i></div>
+                        <div class="details">
+                            <div class="player-name-row">
+                                <span id="opponent-name">Oponente</span>
+                                <div id="opponent-clock" class="clock hidden">10:00</div>
+                            </div>
+                            <div class="captured-pieces" id="captured-black"></div>
+                        </div>
+                    </div>
+
+                    <div class="move-history-container">
+                        <h3>Historial</h3>
+                        <div class="move-list" id="move-list">
+                            <!-- Moves go here -->
+                        </div>
+                    </div>
+
+                    <div class="player-info bottom">
+                        <div class="avatar player"><i class="fa-solid fa-user"></i></div>
+                        <div class="details">
+                            <div class="player-name-row">
+                                <span id="player-name">Tú</span>
+                                <div id="player-clock" class="clock hidden">10:00</div>
+                            </div>
+                            <div class="captured-pieces" id="captured-white"></div>
+                        </div>
+                    </div>
+                </aside>
+
+                <!-- Chess Board Area -->
+                <section class="board-container">
+                    <div id="board" class="chess-board">
+                        <!-- Squares generated by JS -->
+                    </div>
+
+                    <!-- Game Status Notification -->
+                    <div id="game-status" class="status-toast hidden">
+                        <span id="status-text">Check!</span>
+                    </div>
+                </section>
+
+                <!-- Action Bar -->
+                <aside class="action-bar glass-panel">
+                    <button class="icon-btn" onclick="undoMove()" title="Deshacer"><i
+                            class="fa-solid fa-undo"></i></button>
+                    <button class="icon-btn" onclick="resetGame()" title="Reiniciar"><i
+                            class="fa-solid fa-redo"></i></button>
+                    <button class="icon-btn" onclick="copyPGN()" title="Copiar PGN"><i
+                            class="fa-solid fa-copy"></i></button>
+                    <button class="icon-btn" onclick="showTechnicalMenu()" title="Técnico"><i
+                            class="fa-solid fa-code"></i></button>
+                    <button class="icon-btn" onclick="showMainMenu()" title="Salir"><i
+                            class="fa-solid fa-times"></i></button>
+                </aside>
+
+                <!-- Technical Tools Dialog -->
+                <div id="tech-dialog" class="overlay hidden">
+                    <div class="menu-content glass-panel">
+                        <h2>Herramientas Técnicas</h2>
+                        <div class="tech-tools">
+                            <div class="tech-group">
+                                <label>FEN:</label>
+                                <input type="text" id="fen-input" placeholder="Paste FEN here...">
+                                <button class="btn secondary sm" onclick="loadFromFEN()">Cargar FEN</button>
+                            </div>
+                            <div class="tech-group">
+                                <label>PGN:</label>
+                                <textarea id="pgn-input" placeholder="Paste PGN here..."></textarea>
+                                <button class="btn secondary sm" onclick="loadFromPGN()">Cargar PGN</button>
+                            </div>
+                        </div>
+                        <button class="btn text-only" onclick="hideTechMenu()">Cerrar</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Scripts (Ordered for Dependencies) -->
+    <script src="js/levels.js"></script>
+    <script src="js/game-logic.js"></script>
+    <script src="js/board-renderer.js"></script>
+    <script src="js/multiplayer.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
