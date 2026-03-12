@@ -35,7 +35,8 @@ class ChessMultiplayer {
         }
         // Local development - WebSocket on same port as HTTP
         const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-        return `${wsProtocol}//${window.location.hostname}:${window.location.port}/ws`;
+        const port = window.location.port ? `:${window.location.port}` : '';
+        return `${wsProtocol}//${window.location.hostname}${port}/ws`;
     }
 
     // Connect to signaling server

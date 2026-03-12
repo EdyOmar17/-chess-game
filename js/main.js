@@ -9,8 +9,7 @@ const appState = {
     currentLevelId: null,
     pendingPromotion: null,
     isOnline: false,
-    isMyTurn: true,
-    playerColor: 'w'
+    playerColor: 'w' // 'w' or 'b'
 };
 
 // UI Elements
@@ -83,7 +82,7 @@ function showMainMenu() {
     if (appState.isOnline) {
         chessMultiplayer.disconnect();
         appState.isOnline = false;
-        appState.isMyTurn = true;
+        appState.mode = 'menu';
     }
 }
 
@@ -140,17 +139,10 @@ function setupMultiplayer() {
         // Apply opponent's move
         const success = appState.game.move(move.from, move.to, move.promotion);
         if (success) {
-            appState.isMyTurn = true;
-            updateUI();
-            // Forzar múltiples renders para asegurar sincronización
-            appState.renderer.render();
-            setTimeout(() => {
-                appState.renderer.render();
-            }, 50);
-            setTimeout(() => {
-                appState.renderer.render();
-            }, 200);
-            checkGameOver();
+            onMoveComplete(); // Trigger clock switch and game checks
+        } else {
+            console.error("Desync: Opponent move rejected by local engine", move);
+            // Optional: Force reload FEN if server supports it
         }
     };
 }
@@ -168,7 +160,7 @@ function createOnlineGame() {
     chessMultiplayer.setPlayerName(playerName);
 
     appState.isOnline = true;
-    appState.isMyTurn = true;
+    appState.mode = 'online';
     appState.playerColor = 'w';
 
     console.log('Creating online game...');
@@ -194,7 +186,7 @@ function joinOnlineGame() {
         chessMultiplayer.setPlayerName(playerName);
 
         appState.isOnline = true;
-        appState.isMyTurn = false;
+        appState.mode = 'online';
         appState.playerColor = 'b';
         chessMultiplayer.joinRoom(roomCode);
         showConnectionStatus('Uniéndose...', 'connecting');
@@ -214,6 +206,24 @@ function startOnlineGame() {
     }
 
     appState.game.reset();
+
+    // Initialize Clock for Online Mode
+    const timeVal = document.getElementById('time-select').value;
+    if (timeVal !== 'none') {
+        const [mins, inc] = timeVal.split('+').map(Number);
+        if (chessClock) chessClock.stop();
+        chessClock = new ChessClock(mins, inc, handleTimeOut, updateClockUI);
+        document.getElementById('player-clock').classList.remove('hidden');
+        document.getElementById('opponent-clock').classList.remove('hidden');
+        updateClockUI(chessClock.timers);
+        chessClock.start('w'); // White always starts
+    } else {
+        if (chessClock) chessClock.stop();
+        chessClock = null;
+        document.getElementById('player-clock').classList.add('hidden');
+        document.getElementById('opponent-clock').classList.add('hidden');
+    }
+
     appState.renderer.render();
     updatePlayerNames();
     updateUI();
@@ -309,6 +319,8 @@ let chessClock = null;
 // Game Flow Logic
 function startGame(mode, levelId = null) {
     appState.mode = mode; // 'tutorial', 'level', 'local', 'vs-cpu'
+    appState.playerColor = 'w'; // Reset to white by default
+    appState.isOnline = false; // Reset online flag
     appState.game.reset();
 
     // Initialize Clock from UI
@@ -415,6 +427,12 @@ function handleMoveAttempt(from, to) {
         return false;
     }
 
+    // If Online and not my turn, block input
+    if (appState.mode === 'online' && !appState.isMyTurn) {
+        showStatus("Es el turno del oponente", 1000);
+        return false;
+    }
+
     const moveInfo = appState.game.getLegalMoves(from).find(m => m.to === to);
 
     if (!moveInfo) return false;
@@ -429,22 +447,25 @@ function handleMoveAttempt(from, to) {
 }
 
 function executeMove(from, to, promotionPiece = null) {
-    // Check if it's online and not my turn
-    if (appState.isOnline && !appState.isMyTurn) {
-        return false;
+    // Safety check for turns in online mode
+    if (appState.mode === 'online') {
+        const engineTurn = appState.game.getTurn();
+        if (engineTurn !== appState.playerColor) {
+            console.warn("Blocked move: It's the opponent's turn");
+            return false;
+        }
     }
 
     const result = appState.game.move(from, to, promotionPiece);
 
     if (result) {
         // Send move to opponent if online
-        if (appState.isOnline) {
+        if (appState.mode === 'online') {
             chessMultiplayer.sendMove({
                 from: from,
                 to: to,
                 promotion: promotionPiece
             });
-            appState.isMyTurn = false;
         }
 
         onMoveComplete();

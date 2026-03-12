@@ -36,19 +36,23 @@ class BoardRenderer {
                 square.className = `sq ${isLight ? 'light' : 'dark'}`;
                 square.dataset.square = `${file}${rank}`;
 
-                // Click Event
+                // Click Event - Always enabled
                 square.onclick = () => this.handleSquareClick(square.dataset.square);
 
-                // Drag & Drop Events (solo en dispositivos no táctiles)
-                if (!this.isTouchDevice) {
-                    square.ondragover = (e) => this.handleDragOver(e);
-                    square.ondrop = (e) => this.handleDrop(e, square.dataset.square);
-                }
+                // Drag & Drop Events - Always enabled for mouse users
+                square.ondragover = (e) => this.handleDragOver(e);
+                square.ondrop = (e) => this.handleDrop(e, square.dataset.square);
 
-                // Touch Events for mobile
-                square.ontouchstart = (e) => this.handleTouchStart(e, square.dataset.square);
+                // Touch Events for mobile - Only call preventDefault on specific touch actions
+                square.addEventListener('touchstart', (e) => {
+                    this.handleTouchStart(e, square.dataset.square);
+                }, { passive: false });
+
+                square.addEventListener('touchend', (e) => {
+                    this.handleTouchEnd(e, square.dataset.square);
+                }, { passive: false });
+
                 square.ontouchmove = (e) => this.handleTouchMove(e);
-                square.ontouchend = (e) => this.handleTouchEnd(e, square.dataset.square);
 
                 this.boardEl.appendChild(square);
             }
@@ -82,20 +86,17 @@ class BoardRenderer {
                         pieceDiv.style.userSelect = 'none';
                         pieceDiv.style.cursor = this.isTouchDevice ? 'pointer' : 'grab';
 
-                        // Drag and Drop solo en escritorio
-                        if (!this.isTouchDevice) {
-                            pieceDiv.draggable = true;
-                            pieceDiv.ondragstart = (e) => {
-                                this.draggedSource = squareId;
-                                pieceDiv.classList.add('dragging');
-                                e.dataTransfer.effectAllowed = 'move';
-                            };
-                            pieceDiv.ondragend = () => {
-                                pieceDiv.classList.remove('dragging');
-                                this.draggedSource = null;
-                                this.removeDragOverHighlights();
-                            };
-                        }
+                pieceDiv.draggable = true;
+                pieceDiv.ondragstart = (e) => {
+                    this.draggedSource = squareId;
+                    pieceDiv.classList.add('dragging');
+                    e.dataTransfer.effectAllowed = 'move';
+                };
+                pieceDiv.ondragend = () => {
+                    pieceDiv.classList.remove('dragging');
+                    this.draggedSource = null;
+                    this.removeDragOverHighlights();
+                };
 
                         sqEl.appendChild(pieceDiv);
                     }
@@ -230,7 +231,8 @@ class BoardRenderer {
 
     /* --- Touch Events for Mobile --- */
     handleTouchStart(e, squareId) {
-        e.preventDefault();
+        // Only prevent default if it looks like a real touch event to avoid double-firing with simulated clicks
+        if (e.cancelable) e.preventDefault();
         this.touchedSquare = squareId;
         this.handleSquareClick(squareId);
     }
